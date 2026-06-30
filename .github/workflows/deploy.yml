@@ -31,7 +31,7 @@ jobs:
 
       - name: Package application
         run: |
-          VERSION=$(echo "${{ github.sha }}" | cut -c1-8)
+          VERSION="$(echo "${{ github.sha }}" | cut -c1-8)-${{ github.run_number }}"
           BUNDLE="deploy-${VERSION}.zip"
           zip -r "$BUNDLE" . \
             --exclude="node_modules/*" \
