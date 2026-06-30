@@ -1,0 +1,78 @@
+name: Deploy to AWS Elastic Beanstalk
+
+on:
+  push:
+    branches:
+      - master
+
+# Cancel any in-progress deployment for this branch to avoid stale deploys
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Package application
+        run: |
+          VERSION=$(echo "${{ github.sha }}" | cut -c1-8)
+          BUNDLE="deploy-${VERSION}.zip"
+          zip -r "$BUNDLE" . \
+            --exclude="node_modules/*" \
+            --exclude=".git/*" \
+            --exclude="*.zip" \
+            --exclude=".github/*"
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "BUNDLE=${BUNDLE}" >> $GITHUB_ENV
+
+      - name: Upload bundle to S3
+        run: |
+          aws s3 cp "$BUNDLE" "s3://${{ secrets.S3_BUCKET }}/$BUNDLE"
+
+      - name: Create Elastic Beanstalk application version
+        run: |
+          aws elasticbeanstalk create-application-version \
+            --application-name "${{ secrets.EB_APP_NAME }}" \
+            --version-label "$VERSION" \
+            --source-bundle "S3Bucket=${{ secrets.S3_BUCKET }},S3Key=$BUNDLE" \
+            --description "Deployed from commit ${{ github.sha }} by ${{ github.actor }}"
+
+      - name: Deploy new version to environment
+        run: |
+          aws elasticbeanstalk update-environment \
+            --application-name "${{ secrets.EB_APP_NAME }}" \
+            --environment-name "${{ secrets.EB_ENV_NAME }}" \
+            --version-label "$VERSION" \
+            --option-settings \
+              "Namespace=aws:elasticbeanstalk:application:environment,OptionName=APP_VERSION,Value=${VERSION}"
+
+      - name: Wait for deployment to complete
+        run: |
+          aws elasticbeanstalk wait environment-updated \
+            --application-name "${{ secrets.EB_APP_NAME }}" \
+            --environment-name "${{ secrets.EB_ENV_NAME }}"
+
+      - name: Print application URL
+        run: |
+          URL=$(aws elasticbeanstalk describe-environments \
+            --application-name "${{ secrets.EB_APP_NAME }}" \
+            --environment-names "${{ secrets.EB_ENV_NAME }}" \
+            --query "Environments[0].CNAME" \
+            --output text)
+          echo "Deployed version ${VERSION} to http://${URL}"
