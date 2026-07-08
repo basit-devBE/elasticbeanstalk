@@ -138,8 +138,7 @@ The EC2 instances running the app need permission to read and write DynamoDB.
 
 | Secret name | Value |
 |-------------|-------|
-| `AWS_ACCESS_KEY_ID` | Access key ID from Step 4c |
-| `AWS_SECRET_ACCESS_KEY` | Secret access key from Step 4c |
+| `AWS_DEPLOY_ROLE_ARN` | ARN of the IAM role the workflow assumes via OIDC, e.g. `arn:aws:iam::<account-id>:role/EBS_NODE_DEPLOY_ROLE` |
 | `AWS_REGION` | `eu-north-1` |
 | `S3_BUCKET` | Your S3 bucket name from Step 1 |
 | `EB_APP_NAME` | `ebs` |
