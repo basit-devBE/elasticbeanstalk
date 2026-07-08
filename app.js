@@ -321,7 +321,7 @@ app.get("/", (req, res) => {
   res.send(layout("EB Node App", "/", `
     <main>
       <p class="eyebrow">AWS Elastic Beanstalk</p>
-      <h1>DDeployment Dashboard</h1>
+      <h1>Deployment Dashboard</h1>
       <p>Node.js application running on AWS Elastic Beanstalk with DynamoDB integration. Deployed automatically via GitHub Actions on every push to <code>master</code>.</p>
 
       <div class="stat-row">
